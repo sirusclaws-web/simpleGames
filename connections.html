@@ -53,6 +53,12 @@
             transition: all 0.2s;
             border: 2px solid transparent;
             padding: 8px;
+            animation: dropIn 0.3s ease-out;
+        }
+        
+        @keyframes dropIn {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
         
         .tile:hover {
@@ -62,6 +68,11 @@
         .tile.selected {
             border-color: #ffd700;
             background: #3d3d5a;
+        }
+        
+        .tile.empty {
+            background: transparent;
+            cursor: default;
         }
         
         .tile .emoji {
@@ -75,29 +86,34 @@
             text-align: center;
         }
         
-        #guess-btn {
-            margin-top: 1.5rem;
-            padding: 1rem 2rem;
-            background: #ffd700;
-            color: #1a1a2e;
-            border: none;
+        #solved-categories {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .solved {
+            padding: 0.75rem;
             border-radius: 8px;
-            font-size: 1rem;
+            text-align: center;
+            color: #fff;
             font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease-out;
         }
         
-        #guess-btn:hover:not(:disabled) {
-            transform: scale(1.05);
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
         
-        #guess-btn:disabled {
-            background: #444;
-            color: #888;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .difficulty-1 { background: #ffd700; color: #000; }
+        .difficulty-2 { background: #4fc3f7; color: #000; }
+        .difficulty-3 { background: #81c784; color: #000; }
+        .difficulty-4 { background: #e91e63; color: #fff; }
         
         #result {
             margin-top: 1rem;
@@ -106,6 +122,7 @@
             text-align: center;
             font-weight: bold;
             display: none;
+            min-height: 3rem;
         }
         
         #result.show {
@@ -122,28 +139,6 @@
             color: #ffcdd2;
         }
         
-        #solved-categories {
-            margin-top: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        .solved {
-            padding: 1rem;
-            border-radius: 8px;
-            text-align: center;
-            color: #fff;
-            font-weight: bold;
-        }
-        
-        .difficulty-1 { background: #ffd700; color: #000; }
-        .difficulty-2 { background: #4fc3f7; color: #000; }
-        .difficulty-3 { background: #81c784; color: #000; }
-        .difficulty-4 { background: #e91e63; color: #fff; }
-        
         #reset-btn {
             margin-top: 2rem;
             padding: 0.75rem 1.5rem;
@@ -158,6 +153,24 @@
             background: #2d2d4a;
             color: #fff;
         }
+        
+        #guess-btn {
+            margin-top: 1.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #ffd700;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        #guess-btn:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -166,10 +179,10 @@
     
     <div id="game-container"></div>
     
-    <button id="guess-btn" disabled>Guess Connection</button>
+    <button id="guess-btn" disabled>Guess</button>
+    <button id="reset-btn">New Game</button>
     <div id="result"></div>
     <div id="solved-categories"></div>
-    <button id="reset-btn">New Game</button>
     
     <script>
         const categories = [
@@ -258,6 +271,7 @@
         let currentTiles = [];
         let selectedIndices = [];
         let solvedCategories = [];
+        let solvedIndices = new Set();
         
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
@@ -272,6 +286,7 @@
             currentTiles = shuffle(shuffled.flatMap(cat => cat.items));
             selectedIndices = [];
             solvedCategories = [];
+            solvedIndices = new Set();
             render();
         }
         
@@ -281,17 +296,19 @@
             const result = document.getElementById('result');
             const solvedContainer = document.getElementById('solved-categories');
             
-            container.innerHTML = currentTiles.map((tile, i) => `
-                <div class="tile ${selectedIndices.includes(i) ? 'selected' : ''}" 
+            container.innerHTML = currentTiles.map((tile, i) => {
+                const isEmpty = solvedIndices.has(i);
+                return `
+                <div class="tile ${selectedIndices.includes(i) ? 'selected' : ''} ${isEmpty ? 'empty' : ''}" 
                      data-index="${i}" onclick="toggleSelect(${i})">
-                    <span class="emoji">${tile.emoji}</span>
-                    <span class="label">${tile.label}</span>
+                    ${isEmpty ? '' : `<span class="emoji">${tile.emoji}</span><span class="label">${tile.label}</span>`}
                 </div>
-            `).join('');
+            `}).join('');
             
             guessBtn.disabled = selectedIndices.length !== 4;
-            result.classList.remove('show', 'correct', 'wrong');
-            result.textContent = '';
+            if (selectedIndices.length !== 4) {
+                result.classList.remove('show');
+            }
             
             solvedContainer.innerHTML = solvedCategories.map(s => `
                 <div class="solved ${s.difficulty}">${s.emoji} ${s.name}</div>
@@ -300,6 +317,7 @@
         
         function toggleSelect(index) {
             if (solvedCategories.length === 4) return;
+            if (solvedIndices.has(index)) return;
             
             const idx = selectedIndices.indexOf(index);
             if (idx >= 0) {
@@ -310,17 +328,19 @@
             render();
             
             if (selectedIndices.length === 4) {
-                autoCheck();
+                checkGuess();
             }
         }
         
-        function autoCheck() {
-            const tiles = selectedIndices.map(i => currentTiles[i]);
+        function checkGuess() {
+            const tiles = selectedIndices.map(i => ({...currentTiles[i], index: i}));
             const tileLabels = tiles.map(t => t.label);
             
             for (const cat of categories) {
                 const catLabels = cat.items.map(i => i.label);
-                if (tileLabels.every(l => catLabels.includes(l))) {
+                const allMatch = tileLabels.every(l => catLabels.includes(l));
+                
+                if (allMatch) {
                     const difficulty = solvedCategories.length + 1;
                     solvedCategories.push({
                         name: cat.name,
@@ -328,30 +348,38 @@
                         difficulty: `difficulty-${difficulty}`
                     });
                     
+                    // Mark these tiles as solved
+                    selectedIndices.forEach(idx => solvedIndices.add(idx));
+                    
                     const result = document.getElementById('result');
                     const diffName = difficulty === 1 ? 'Easy' : difficulty === 2 ? 'Medium' : difficulty === 3 ? 'Hard' : 'Tricky';
                     result.classList.add('show', 'correct');
-                    result.textContent = `✅ ${cat.name} (${diffName})`;
+                    result.textContent = `✅ ${cat.emoji} ${cat.name} (${diffName})`;
                     
-                    setTimeout(() => {
-                        selectedIndices = [];
-                        if (solvedCategories.length === 4) {
+                    selectedIndices = [];
+                    
+                    if (solvedCategories.length === 4) {
+                        setTimeout(() => {
                             result.textContent = "🎉 You Won!";
-                        }
-                        render();
-                    }, 1500);
+                        }, 1500);
+                    }
+                    
+                    setTimeout(render, 1500);
                     return;
                 }
             }
             
             const result = document.getElementById('result');
             result.classList.add('show', 'wrong');
-            result.textContent = "❌ Not quite! Try again.";
-            selectedIndices = [];
-            setTimeout(render, 1000);
+            result.textContent = "❌ One away!" + (selectedIndices.length === 4 ? " Try again." : "");
+            
+            setTimeout(() => {
+                selectedIndices = [];
+                render();
+            }, 1000);
         }
         
-        document.getElementById('guess-btn').addEventListener('click', autoCheck);
+        document.getElementById('guess-btn').addEventListener('click', checkGuess);
         document.getElementById('reset-btn').addEventListener('click', initGame);
         
         initGame();

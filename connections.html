@@ -88,7 +88,7 @@
             transition: all 0.2s;
         }
         
-        #guess-btn:hover {
+        #guess-btn:hover:not(:disabled) {
             transform: scale(1.05);
         }
         
@@ -174,83 +174,83 @@
     <script>
         const categories = [
             {
-                name: "Classic Bollywood Actors",
-                emoji: "🎬",
+                name: "North Indian Curries",
+                emoji: "🍛",
                 items: [
-                    { emoji: "🤠", label: "Shah Rukh" },
-                    { emoji: "💪", label: "Salman" },
-                    { emoji: "🧠", label: "Aamir" },
-                    { emoji: "🎭", label: "Amitabh" }
+                    { emoji: "🥘", label: "Biryani" },
+                    { emoji: "🍲", label: "Butter Chicken" },
+                    { emoji: "🥘", label: "Dal Makhani" },
+                    { emoji: "🍖", label: "Rogan Josh" }
                 ]
             },
             {
-                name: "Indian Pop Music",
-                emoji: "🎵",
+                name: "South Indian Breakfast",
+                emoji: "🫓",
                 items: [
-                    { emoji: "🎤", label: "Asha Bhosle" },
-                    { emoji: "🎼", label: "Lata Mangeshkar" },
-                    { emoji: "🎹", label: "AR Rahman" },
-                    { emoji: "🎧", label: "Sonu Nigam" }
+                    { emoji: "🥞", label: "Dosa" },
+                    { emoji: "🥟", label: "Idli" },
+                    { emoji: "🥣", label: "Upma" },
+                    { emoji: "🥞", label: "Pongal" }
                 ]
             },
             {
-                name: "Bollywood Hits",
-                emoji: "🎞️",
+                name: "Indian Snacks",
+                emoji: "🥨",
                 items: [
-                    { emoji: "🏍️", label: "Sholay" },
-                    { emoji: "💕", label: "DDLJ" },
-                    { emoji: "🏏", label: "3 Idiots" },
-                    { emoji: "🏏", label: "Lagaan" }
+                    { emoji: "🥟", label: "Samosa" },
+                    { emoji: "🥠", label: "Pakora" },
+                    { emoji: "🥨", label: "Bhujia" },
+                    { emoji: "🧆", label: "Chaat" }
                 ]
             },
             {
-                name: "Indian Festivals",
-                emoji: "🎉",
+                name: "Indian Sweets",
+                emoji: "🍬",
                 items: [
-                    { emoji: "🪔", label: "Diwali" },
-                    { emoji: "🎨", label: "Holi" },
-                    { emoji: "🌙", label: "Eid" },
-                    { emoji: "🪷", label: "Navratri" }
+                    { emoji: "🟡", label: "Gulab Jamun" },
+                    { emoji: "⚪", label: "Rasgulla" },
+                    { emoji: "🟡", label: "Jalebi" },
+                    { emoji: "🟤", label: "Ladoo" }
                 ]
             },
             {
-                name: "Bollywood Dances",
-                emoji: "💃",
+                name: "Mumbai Street Food",
+                emoji: "🌭",
                 items: [
-                    { emoji: "🪭", label: "Garba" },
-                    { emoji: "💫", label: "Bhangra" },
-                    { emoji: "🦚", label: "Kathak" },
-                    { emoji: "🕺", label: "Disco" }
+                    { emoji: "🌭", label: "Vada Pav" },
+                    { emoji: "🥪", label: "Pav Bhaji" },
+                    { emoji: "🥪", label: "Bhelpuri" },
+                    { emoji: "🧋", label: "Chai" }
                 ]
             },
             {
-                name: "Cricket Stars",
-                emoji: "🏏",
+                name: "Punjabi Favorites",
+                emoji: "🔶",
                 items: [
-                    { emoji: "🛡️", label: "Sachin" },
-                    { emoji: "⚡", label: "Dhoni" },
-                    { emoji: "👑", label: "Kohli" },
-                    { emoji: "🌟", label: "Yuvraj" }
+                    { emoji: "🍲", label: "Sarson Da Saag" },
+                    { emoji: "🫓", label: "Makki Ki Roti" },
+                    { emoji: "🥘", label: "Kadhi Pakora" },
+                    { emoji: "🥔", label: "Aloo Gobi" }
                 ]
             },
             {
-                name: "SRK Movies",
-                emoji: "💖",
+                name: "Tamil Nadu",
+                emoji: "🫱",
                 items: [
-                    { emoji: "🚂", label: "Dilwale" },
-                    { emoji: "🎰", label: "Kuch Kuch" },
-                    { emoji: "✈️", label: "Dil To Pagal" },
-                    { emoji: "🔍", label: "Don" }
+                    { emoji: "🥣", label: "Sambar" },
+                    { emoji: "🥞", label: "Masala Dosa" },
+                    { emoji: "🍚", label: "Rasam" },
+                    { emoji: "🥗", label: "Avial" }
                 ]
             },
             {
-                name: "Playback Singers",
-                emoji: "🎶",
+                name: "Bengali Sweets",
+                emoji: "🎂",
                 items: [
-                    { emoji: "👩", label: "Alka Yagnik" },
-                    { emoji: "👨", label: "Kumar Sanu" },
-                    { emoji: "👩", label: "Sadhana Sargam" },
-                    { emoji: "👨", label: "Udit Narayan" }
+                    { emoji: "⚪", label: "Rasgulla" },
+                    { emoji: "🟤", label: "Sandesh" },
+                    { emoji: "🟡", label: "Rasamalai" },
+                    { emoji: "🟡", label: "Mishti Doi" }
                 ]
             }
         ];
@@ -268,12 +268,10 @@
         }
         
         function initGame() {
-            // Pick 4 random categories
             const shuffled = shuffle([...categories]).slice(0, 4);
             currentTiles = shuffle(shuffled.flatMap(cat => cat.items));
             selectedIndices = [];
             solvedCategories = [];
-            
             render();
         }
         
@@ -309,75 +307,51 @@
             } else if (selectedIndices.length < 4) {
                 selectedIndices.push(index);
             }
-            
-            const tiles = selectedIndices.map(i => currentTiles[i]);
-            
-            // Find which category these belong to
-            let matchedCategory = null;
-            for (const cat of categories) {
-                const items = cat.items.map(i => i.label);
-                if (tiles.every(t => items.includes(t.label))) {
-                    matchedCategory = cat;
-                    break;
-                }
-            }
-            
             render();
             
-            // Auto-check if all 4 match a category
-            if (selectedIndices.length === 4 && matchedCategory) {
-                checkGuess(matchedCategory);
+            if (selectedIndices.length === 4) {
+                autoCheck();
             }
         }
         
-        function checkGuess(category) {
-            const result = document.getElementById('result');
-            const difficulty = solvedCategories.length + 1;
-            
-            solvedCategories.push({
-                name: category.name,
-                emoji: category.emoji,
-                difficulty: `difficulty-${difficulty}`
-            });
-            
-            // Remove these tiles and show solved
-            result.classList.add('show', 'correct');
-            result.textContent = `✅ ${category.name} (${difficulty === 1 ? 'Easy' : difficulty === 2 ? 'Medium' : difficulty === 3 ? 'Hard' : 'Tricky'})`;
-            
-            setTimeout(() => {
-                selectedIndices = [];
-                
-                if (solvedCategories.length === 4) {
-                    result.textContent = "🎉 You Won!";
-                }
-                
-                render();
-            }, 1500);
-        }
-        
-        document.getElementById('guess-btn').addEventListener('click', () => {
+        function autoCheck() {
             const tiles = selectedIndices.map(i => currentTiles[i]);
+            const tileLabels = tiles.map(t => t.label);
             
-            let matchedCategory = null;
             for (const cat of categories) {
-                const items = cat.items.map(i => i.label);
-                if (tiles.every(t => items.includes(t.label))) {
-                    matchedCategory = cat;
-                    break;
+                const catLabels = cat.items.map(i => i.label);
+                if (tileLabels.every(l => catLabels.includes(l))) {
+                    const difficulty = solvedCategories.length + 1;
+                    solvedCategories.push({
+                        name: cat.name,
+                        emoji: cat.emoji,
+                        difficulty: `difficulty-${difficulty}`
+                    });
+                    
+                    const result = document.getElementById('result');
+                    const diffName = difficulty === 1 ? 'Easy' : difficulty === 2 ? 'Medium' : difficulty === 3 ? 'Hard' : 'Tricky';
+                    result.classList.add('show', 'correct');
+                    result.textContent = `✅ ${cat.name} (${diffName})`;
+                    
+                    setTimeout(() => {
+                        selectedIndices = [];
+                        if (solvedCategories.length === 4) {
+                            result.textContent = "🎉 You Won!";
+                        }
+                        render();
+                    }, 1500);
+                    return;
                 }
             }
             
-            if (matchedCategory) {
-                checkGuess(matchedCategory);
-            } else {
-                const result = document.getElementById('result');
-                result.classList.add('show', 'wrong');
-                result.textContent = "❌ That's not a valid connection. Try again!";
-                selectedIndices = [];
-                render();
-            }
-        });
+            const result = document.getElementById('result');
+            result.classList.add('show', 'wrong');
+            result.textContent = "❌ Not quite! Try again.";
+            selectedIndices = [];
+            setTimeout(render, 1000);
+        }
         
+        document.getElementById('guess-btn').addEventListener('click', autoCheck);
         document.getElementById('reset-btn').addEventListener('click', initGame);
         
         initGame();

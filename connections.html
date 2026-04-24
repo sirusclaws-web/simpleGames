@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Connections</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            padding: 1rem;
+        }
+        
+        h1 {
+            color: #fff;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #888;
+            margin-bottom: 1.5rem;
+        }
+        
+        #game-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .tile {
+            aspect-ratio: 1;
+            background: #2d2d4a;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            padding: 8px;
+        }
+        
+        .tile:hover {
+            background: #3d3d5a;
+        }
+        
+        .tile.selected {
+            border-color: #ffd700;
+            background: #3d3d5a;
+        }
+        
+        .tile .emoji {
+            font-size: 2.5rem;
+            margin-bottom: 4px;
+        }
+        
+        .tile .label {
+            color: #fff;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+        
+        #guess-btn {
+            margin-top: 1.5rem;
+            padding: 1rem 2rem;
+            background: #ffd700;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        #guess-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        #guess-btn:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+        
+        #result.show {
+            display: block;
+        }
+        
+        #result.correct {
+            background: #1b5e20;
+            color: #a5d6a7;
+        }
+        
+        #result.wrong {
+            background: #b71c1c;
+            color: #ffcdd2;
+        }
+        
+        #solved-categories {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .solved {
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .difficulty-1 { background: #ffd700; color: #000; }
+        .difficulty-2 { background: #4fc3f7; color: #000; }
+        .difficulty-3 { background: #81c784; color: #000; }
+        .difficulty-4 { background: #e91e63; color: #fff; }
+        
+        #reset-btn {
+            margin-top: 2rem;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            color: #888;
+            border: 1px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        #reset-btn:hover {
+            background: #2d2d4a;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 India Connections</h1>
+    <p class="subtitle">Find the connection between 4 items</p>
+    
+    <div id="game-container"></div>
+    
+    <button id="guess-btn" disabled>Guess Connection</button>
+    <div id="result"></div>
+    <div id="solved-categories"></div>
+    <button id="reset-btn">New Game</button>
+    
+    <script>
+        const categories = [
+            {
+                name: "Classic Bollywood Actors",
+                emoji: "🎬",
+                items: [
+                    { emoji: "🤠", label: "Shah Rukh" },
+                    { emoji: "💪", label: "Salman" },
+                    { emoji: "🧠", label: "Aamir" },
+                    { emoji: "🎭", label: "Amitabh" }
+                ]
+            },
+            {
+                name: "Indian Pop Music",
+                emoji: "🎵",
+                items: [
+                    { emoji: "🎤", label: "Asha Bhosle" },
+                    { emoji: "🎼", label: "Lata Mangeshkar" },
+                    { emoji: "🎹", label: "AR Rahman" },
+                    { emoji: "🎧", label: "Sonu Nigam" }
+                ]
+            },
+            {
+                name: "Bollywood Hits",
+                emoji: "🎞️",
+                items: [
+                    { emoji: "🏍️", label: "Sholay" },
+                    { emoji: "💕", label: "DDLJ" },
+                    { emoji: "🏏", label: "3 Idiots" },
+                    { emoji: "🏏", label: "Lagaan" }
+                ]
+            },
+            {
+                name: "Indian Festivals",
+                emoji: "🎉",
+                items: [
+                    { emoji: "🪔", label: "Diwali" },
+                    { emoji: "🎨", label: "Holi" },
+                    { emoji: "🌙", label: "Eid" },
+                    { emoji: "🪷", label: "Navratri" }
+                ]
+            },
+            {
+                name: "Bollywood Dances",
+                emoji: "💃",
+                items: [
+                    { emoji: "🪭", label: "Garba" },
+                    { emoji: "💫", label: "Bhangra" },
+                    { emoji: "🦚", label: "Kathak" },
+                    { emoji: "🕺", label: "Disco" }
+                ]
+            },
+            {
+                name: "Cricket Stars",
+                emoji: "🏏",
+                items: [
+                    { emoji: "🛡️", label: "Sachin" },
+                    { emoji: "⚡", label: "Dhoni" },
+                    { emoji: "👑", label: "Kohli" },
+                    { emoji: "🌟", label: "Yuvraj" }
+                ]
+            },
+            {
+                name: "SRK Movies",
+                emoji: "💖",
+                items: [
+                    { emoji: "🚂", label: "Dilwale" },
+                    { emoji: "🎰", label: "Kuch Kuch" },
+                    { emoji: "✈️", label: "Dil To Pagal" },
+                    { emoji: "🔍", label: "Don" }
+                ]
+            },
+            {
+                name: "Playback Singers",
+                emoji: "🎶",
+                items: [
+                    { emoji: "👩", label: "Alka Yagnik" },
+                    { emoji: "👨", label: "Kumar Sanu" },
+                    { emoji: "👩", label: "Sadhana Sargam" },
+                    { emoji: "👨", label: "Udit Narayan" }
+                ]
+            }
+        ];
+        
+        let currentTiles = [];
+        let selectedIndices = [];
+        let solvedCategories = [];
+        
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        
+        function initGame() {
+            // Pick 4 random categories
+            const shuffled = shuffle([...categories]).slice(0, 4);
+            currentTiles = shuffle(shuffled.flatMap(cat => cat.items));
+            selectedIndices = [];
+            solvedCategories = [];
+            
+            render();
+        }
+        
+        function render() {
+            const container = document.getElementById('game-container');
+            const guessBtn = document.getElementById('guess-btn');
+            const result = document.getElementById('result');
+            const solvedContainer = document.getElementById('solved-categories');
+            
+            container.innerHTML = currentTiles.map((tile, i) => `
+                <div class="tile ${selectedIndices.includes(i) ? 'selected' : ''}" 
+                     data-index="${i}" onclick="toggleSelect(${i})">
+                    <span class="emoji">${tile.emoji}</span>
+                    <span class="label">${tile.label}</span>
+                </div>
+            `).join('');
+            
+            guessBtn.disabled = selectedIndices.length !== 4;
+            result.classList.remove('show', 'correct', 'wrong');
+            result.textContent = '';
+            
+            solvedContainer.innerHTML = solvedCategories.map(s => `
+                <div class="solved ${s.difficulty}">${s.emoji} ${s.name}</div>
+            `).join('');
+        }
+        
+        function toggleSelect(index) {
+            if (solvedCategories.length === 4) return;
+            
+            const idx = selectedIndices.indexOf(index);
+            if (idx >= 0) {
+                selectedIndices.splice(idx, 1);
+            } else if (selectedIndices.length < 4) {
+                selectedIndices.push(index);
+            }
+            
+            const tiles = selectedIndices.map(i => currentTiles[i]);
+            
+            // Find which category these belong to
+            let matchedCategory = null;
+            for (const cat of categories) {
+                const items = cat.items.map(i => i.label);
+                if (tiles.every(t => items.includes(t.label))) {
+                    matchedCategory = cat;
+                    break;
+                }
+            }
+            
+            render();
+            
+            // Auto-check if all 4 match a category
+            if (selectedIndices.length === 4 && matchedCategory) {
+                checkGuess(matchedCategory);
+            }
+        }
+        
+        function checkGuess(category) {
+            const result = document.getElementById('result');
+            const difficulty = solvedCategories.length + 1;
+            
+            solvedCategories.push({
+                name: category.name,
+                emoji: category.emoji,
+                difficulty: `difficulty-${difficulty}`
+            });
+            
+            // Remove these tiles and show solved
+            result.classList.add('show', 'correct');
+            result.textContent = `✅ ${category.name} (${difficulty === 1 ? 'Easy' : difficulty === 2 ? 'Medium' : difficulty === 3 ? 'Hard' : 'Tricky'})`;
+            
+            setTimeout(() => {
+                selectedIndices = [];
+                
+                if (solvedCategories.length === 4) {
+                    result.textContent = "🎉 You Won!";
+                }
+                
+                render();
+            }, 1500);
+        }
+        
+        document.getElementById('guess-btn').addEventListener('click', () => {
+            const tiles = selectedIndices.map(i => currentTiles[i]);
+            
+            let matchedCategory = null;
+            for (const cat of categories) {
+                const items = cat.items.map(i => i.label);
+                if (tiles.every(t => items.includes(t.label))) {
+                    matchedCategory = cat;
+                    break;
+                }
+            }
+            
+            if (matchedCategory) {
+                checkGuess(matchedCategory);
+            } else {
+                const result = document.getElementById('result');
+                result.classList.add('show', 'wrong');
+                result.textContent = "❌ That's not a valid connection. Try again!";
+                selectedIndices = [];
+                render();
+            }
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', initGame);
+        
+        initGame();
+    </script>
+</body>
+</html>

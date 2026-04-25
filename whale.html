@@ -12,7 +12,7 @@
         }
         
         body {
-            background: linear-gradient(to bottom, #001133, #003366, #000033);
+            background: #000011;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -24,10 +24,9 @@
         }
         
         h1 {
-            color: #fff;
+            color: #00bfff;
             font-size: 1.8rem;
             margin-bottom: 0.5rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         
         #game-container {
@@ -40,7 +39,7 @@
         
         canvas {
             display: block;
-            background: transparent;
+            background: #001133;
         }
         
         #score {
@@ -48,11 +47,10 @@
             font-size: 1.5rem;
             font-weight: bold;
             margin: 0.5rem 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         
         #instructions {
-            color: rgba(255,255,255,0.8);
+            color: rgba(255,255,255,0.7);
             font-size: 0.9rem;
             margin-top: 0.5rem;
         }
@@ -63,7 +61,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -85,15 +83,11 @@
             color: #00bfff;
         }
         
-        #start-screen p {
-            margin-bottom: 1rem;
-        }
-        
         .btn {
             padding: 1rem 2rem;
             font-size: 1.2rem;
             background: #00bfff;
-            color: #fff;
+            color: #000;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -121,12 +115,13 @@
         <div id="start-screen">
             <h2>🐋 Dive Deep!</h2>
             <p>Avoid obstacles & collect bubbles!</p>
+            <br>
             <button class="btn" id="start-btn">Start Game</button>
         </div>
         <div id="game-over">
             <h2>💥 Game Over!</h2>
             <div id="final-score">Score: 0</div>
-            <button class="btn" onclick="startGame()">Play Again</button>
+            <button class="btn" id="restart-btn">Play Again</button>
         </div>
     </div>
     <div id="instructions">Hold SPACE or Click to swim up | Release to sink</div>
@@ -158,63 +153,61 @@
             ctx.save();
             ctx.translate(x, y);
             
-            // Angle based on velocity
-            const angle = Math.min(Math.max(whale.vy * 0.1, -0.4), 0.4);
+            const angle = Math.min(Math.max(whale.vy * 0.08, -0.5), 0.5);
             ctx.rotate(angle);
             
             // Tail
-            ctx.fillStyle = '#5588ff';
+            ctx.fillStyle = '#FF6B35';
             ctx.beginPath();
             ctx.moveTo(-30, 0);
-            ctx.lineTo(-45, -15);
-            ctx.lineTo(-45, 15);
+            ctx.lineTo(-50, -18);
+            ctx.lineTo(-50, 18);
             ctx.closePath();
             ctx.fill();
             
-            // Body
-            ctx.fillStyle = '#5588ff';
+            // Body - bright blue whale
+            ctx.fillStyle = '#00BFFF';
             ctx.beginPath();
-            ctx.ellipse(0, 0, 30, 15, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, 35, 18, 0, 0, Math.PI * 2);
             ctx.fill();
             
-            // Underbelly
-            ctx.fillStyle = '#88aaff';
+            // Belly - lighter blue
+            ctx.fillStyle = '#87CEEB';
             ctx.beginPath();
-            ctx.ellipse(5, 5, 18, 8, 0, 0, Math.PI);
+            ctx.ellipse(8, 6, 22, 10, 0, 0, Math.PI);
             ctx.fill();
             
-            // Eye (white)
-            ctx.fillStyle = '#ffffff';
+            // Eye - white with black pupil
+            ctx.fillStyle = '#FFFFFF';
             ctx.beginPath();
-            ctx.arc(18, -4, 6, 0, Math.PI * 2);
+            ctx.arc(20, -5, 8, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Pupil (black)
             ctx.fillStyle = '#000000';
             ctx.beginPath();
-            ctx.arc(20, -4, 3, 0, Math.PI * 2);
+            ctx.arc(23, -5, 4, 0, Math.PI * 2);
             ctx.fill();
             
             // Smile
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(22, 2, 6, 0.2, 1.2);
+            ctx.arc(25, 2, 8, 0.3, 1.5);
             ctx.stroke();
             
             // Fins
-            ctx.fillStyle = '#5588ff';
+            ctx.fillStyle = '#00BFFF';
+            // Top fin
             ctx.beginPath();
-            ctx.moveTo(-5, 8);
-            ctx.lineTo(-15, 20);
-            ctx.lineTo(5, 12);
+            ctx.moveTo(-5, -12);
+            ctx.lineTo(-18, -28);
+            ctx.lineTo(5, -15);
             ctx.closePath();
             ctx.fill();
-            
+            // Bottom fin
             ctx.beginPath();
-            ctx.moveTo(-5, -8);
-            ctx.lineTo(-15, -20);
-            ctx.lineTo(5, -12);
+            ctx.moveTo(-5, 12);
+            ctx.lineTo(-18, 28);
+            ctx.lineTo(5, 15);
             ctx.closePath();
             ctx.fill();
             
@@ -223,68 +216,76 @@
         
         function drawObstacles() {
             obstacles.forEach(obs => {
-                // Rock gradient
-                const gradient = ctx.createLinearGradient(obs.x, obs.y, obs.x + obs.width, obs.y);
-                gradient.addColorStop(0, '#8B4513');
-                gradient.addColorStop(0.5, '#CD853F');
-                gradient.addColorStop(1, '#8B4513');
-                ctx.fillStyle = gradient;
-                
-                ctx.beginPath();
-                ctx.moveTo(obs.x, HEIGHT);
-                ctx.lineTo(obs.x + 15, obs.y);
-                ctx.lineTo(obs.x + 30, obs.y + 20);
-                ctx.lineTo(obs.x + obs.width, HEIGHT);
-                ctx.closePath();
-                ctx.fill();
+                // Draw jellyfish instead of rocks (more visible!)
+                if (obs.type === 'jelly') {
+                    // Jellyfish body
+                    ctx.fillStyle = '#FF69B4';
+                    ctx.beginPath();
+                    ctx.arc(obs.x, obs.y, obs.size, Math.PI, 0);
+                    ctx.fill();
+                    
+                    // Tentacles
+                    ctx.strokeStyle = '#FF69B4';
+                    ctx.lineWidth = 3;
+                    for (let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(obs.x - obs.size/2 + i * obs.size/4, obs.y);
+                        ctx.quadraticCurveTo(
+                            obs.x - obs.size/2 + i * obs.size/4 + 5, obs.y + obs.size,
+                            obs.x - obs.size/2 + i * obs.size/4, obs.y + obs.size + 10
+                        );
+                        ctx.stroke();
+                    }
+                } else {
+                    // Seaweed - bright green, very visible!
+                    ctx.strokeStyle = '#32CD32';
+                    ctx.lineWidth = 8;
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x, HEIGHT);
+                    ctx.quadraticCurveTo(
+                        obs.x + 15, obs.y - obs.height/2,
+                        obs.x, obs.y - obs.height
+                    );
+                    ctx.stroke();
+                }
             });
         }
         
         function drawBubbles() {
             bubbles.forEach(b => {
-                ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
                 ctx.stroke();
                 
-                // Shine spot
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                // Shine
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
                 ctx.beginPath();
-                ctx.arc(b.x - b.size/3, b.y - b.size/3, b.size/4, 0, Math.PI * 2);
+                ctx.arc(b.x - b.size/3, b.y - b.size/3, b.size/3, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
         
         function drawBackground() {
-            // Deep sea gradient
+            // Dark sea gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-            gradient.addColorStop(0, '#003366');
-            gradient.addColorStop(0.5, '#001133');
+            gradient.addColorStop(0, '#001a33');
+            gradient.addColorStop(0.5, '#000d1a');
             gradient.addColorStop(1, '#000011');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, WIDTH, HEIGHT);
             
-            // Light rays from surface
-            ctx.fillStyle = 'rgba(0,191,255,0.05)';
-            for (let i = 0; i < 5; i++) {
-                const x = (i * 100 + frameCount * 0.5) % (WIDTH + 100) - 50;
+            // Light rays
+            ctx.fillStyle = 'rgba(0,191,255,0.04)';
+            for (let i = 0; i < 4; i++) {
+                const x = (i * 120 + frameCount * 0.3) % (WIDTH + 80) - 40;
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
-                ctx.lineTo(x + 30, 0);
-                ctx.lineTo(x - 20, HEIGHT);
-                ctx.lineTo(x - 50, HEIGHT);
+                ctx.lineTo(x + 40, 0);
+                ctx.lineTo(x - 30, HEIGHT);
+                ctx.lineTo(x - 70, HEIGHT);
                 ctx.closePath();
-                ctx.fill();
-            }
-            
-            // Floating particles
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            for (let i = 0; i < 20; i++) {
-                const px = (i * 73 + frameCount * 0.3) % WIDTH;
-                const py = (i * 97 + frameCount * 0.5) % HEIGHT;
-                ctx.beginPath();
-                ctx.arc(px, py, 2, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
@@ -292,82 +293,103 @@
         function draw() {
             ctx.clearRect(0, 0, WIDTH, HEIGHT);
             drawBackground();
-            drawBubbles();
             drawObstacles();
+            drawBubbles();
             drawWhale();
         }
         
         function update() {
             // Whale physics
             if (keysPressed) {
-                whale.vy -= 0.6;
+                whale.vy -= 0.5;
             } else {
-                whale.vy += 0.3;
+                whale.vy += 0.25;
             }
             
-            whale.vy = Math.max(-8, Math.min(8, whale.vy));
+            whale.vy = Math.max(-6, Math.min(6, whale.vy));
             whale.y += whale.vy;
             
-            // Top/bottom bounds (sea floor and surface)
-            if (whale.y < 30) {
-                whale.y = 30;
+            // Bounds
+            if (whale.y < 40) {
+                whale.y = 40;
                 whale.vy = 0;
             }
-            if (whale.y > HEIGHT - 30) {
-                whale.y = HEIGHT - 30;
+            if (whale.y > HEIGHT - 40) {
+                whale.y = HEIGHT - 40;
                 whale.vy = 0;
             }
             
-            // Spawn coral obstacles
-            if (frameCount % 80 === 0) {
-                const height = 60 + Math.random() * 120;
-                obstacles.push({
-                    x: WIDTH + 20,
-                    y: HEIGHT - height,
-                    width: 50 + Math.random() * 30,
-                    height: height
-                });
+            // Spawn obstacles
+            if (frameCount % 90 === 0) {
+                const isJelly = Math.random() > 0.5;
+                if (isJelly) {
+                    obstacles.push({
+                        type: 'jelly',
+                        x: WIDTH + 30,
+                        y: 40 + Math.random() * (HEIGHT - 120),
+                        size: 25 + Math.random() * 15,
+                        passed: false
+                    });
+                } else {
+                    obstacles.push({
+                        type: 'seaweed',
+                        x: WIDTH + 30,
+                        y: HEIGHT,
+                        height: 80 + Math.random() * 100,
+                        passed: false
+                    });
+                }
             }
             
             // Spawn bubbles
-            if (frameCount % 100 === 0) {
+            if (frameCount % 110 === 0) {
                 bubbles.push({
                     x: WIDTH + 20,
-                    y: 50 + Math.random() * (HEIGHT - 150),
-                    size: 12 + Math.random() * 10
+                    y: 40 + Math.random() * (HEIGHT - 100),
+                    size: 10 + Math.random() * 8
                 });
             }
             
-            // Move obstacles
+            // Update obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 const obs = obstacles[i];
-                obs.x -= 3 + score * 0.0005;
+                obs.x -= 3.5 + score * 0.0003;
                 
-                // Collision with whale
-                const whX = whale.x;
-                const whY = whale.y;
-                if (whX + 20 > obs.x && whX - 20 < obs.x + obs.width &&
-                    whY - 10 < obs.y && whY + 10 > obs.y - obs.height) {
+                // Collision check
+                let hit = false;
+                if (obs.type === 'jelly') {
+                    const dx = whale.x - obs.x;
+                    const dy = whale.y - obs.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < obs.size + 25) hit = true;
+                } else {
+                    // Seaweed collision
+                    if (whale.x + 25 > obs.x - 10 && whale.x - 25 < obs.x + 10 &&
+                        whale.y + 10 > obs.y - obs.height && whale.y < obs.y) {
+                        hit = true;
+                    }
+                }
+                
+                if (hit) {
                     endGame();
                     return;
                 }
                 
-                if (obs.x + obs.width < 0) {
+                if (obs.x + 50 < 0) {
                     obstacles.splice(i, 1);
                     score += 10;
                     scoreEl.textContent = 'Score: ' + score;
                 }
             }
             
-            // Move and collect bubbles
+            // Update bubbles
             for (let i = bubbles.length - 1; i >= 0; i--) {
                 const b = bubbles[i];
                 b.x -= 2;
                 
-                // Check collection
                 const dx = whale.x - b.x;
                 const dy = whale.y - b.y;
-                if (Math.sqrt(dx*dx + dy*dy) < b.size + 25) {
+                if (Math.sqrt(dx*dx + dy*dy) < b.size + 30) {
                     bubbles.splice(i, 1);
                     score += 50;
                     scoreEl.textContent = 'Score: ' + score;
@@ -386,9 +408,7 @@
             if (!gameRunning) return;
             update();
             draw();
-            if (gameRunning) {
-                gameLoop = requestAnimationFrame(gameLoopFn);
-            }
+            gameLoop = requestAnimationFrame(gameLoopFn);
         }
         
         function startGame() {
@@ -411,7 +431,7 @@
             gameOverScreen.classList.add('show');
         }
         
-        // Controls - Keyboard
+        // Controls
         document.addEventListener('keydown', function(e) {
             if (e.code === 'Space') {
                 e.preventDefault();
@@ -421,12 +441,9 @@
         });
         
         document.addEventListener('keyup', function(e) {
-            if (e.code === 'Space') {
-                keysPressed = false;
-            }
+            if (e.code === 'Space') keysPressed = false;
         });
         
-        // Controls - Mouse
         document.addEventListener('mousedown', function() {
             keysPressed = true;
         });
@@ -435,7 +452,6 @@
             keysPressed = false;
         });
         
-        // Controls - Touch
         document.addEventListener('touchstart', function(e) {
             e.preventDefault();
             keysPressed = true;
@@ -448,11 +464,9 @@
         });
         
         document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('restart-btn').addEventListener('click', startGame);
         
-        // Wait for page to load fully
-        window.onload = function() {
-            draw();
-        };
+        draw();
     </script>
 </body>
 </html>

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sorry! 🎲</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            color: #fff;
+            user-select: none;
+        }
+        
+        h1 { color: #ffd700; font-size: 28px; margin: 10px 0; text-shadow: 0 0 10px #ffd700; }
+        
+        #turn-display {
+            font-size: 18px;
+            margin-bottom: 10px;
+            padding: 8px 20px;
+            border-radius: 20px;
+        }
+        .turn-red { background: #f44; color: #fff; }
+        .turn-blue { background: #44f; color: #fff; }
+        
+        #game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        #board {
+            border: 4px solid #ffd700;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        #card-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #current-card {
+            width: 80px;
+            height: 100px;
+            background: #fff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        
+        #card-display {
+            font-size: 16px;
+            color: #888;
+            text-align: center;
+            min-height: 40px;
+        }
+        
+        #message {
+            font-size: 16px;
+            min-height: 24px;
+            color: #0f0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: #ffd700;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .btn:disabled { background: #555; color: #888; }
+        
+        #rules {
+            margin-top: 15px;
+            background: #2d2d4a;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #aaa;
+            max-width: 350px;
+        }
+        #rules h3 { color: #ffd700; margin-bottom: 10px; }
+        #rules ul { margin-left: 20px; }
+        
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #overlay.hidden { display: none; }
+        #overlay h2 { color: #ffd700; font-size: 36px; margin-bottom: 15px; }
+        #overlay p { color: #888; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🎲 SORRY!</h1>
+    <div id="turn-display" class="turn-red">Red's Turn</div>
+    
+    <div id="game-area">
+        <canvas id="board" width="360" height="360"></canvas>
+        
+        <div id="card-area">
+            <div id="current-card">?</div>
+            <div id="card-display">Draw a card to begin</div>
+            <button class="btn" id="draw-btn">Draw Card</button>
+        </div>
+        
+        <div id="message"></div>
+        <button class="btn" id="new-btn">New Game</button>
+    </div>
+    
+    <div id="rules">
+        <h3>🎯 How to Play</h3>
+        <ul>
+            <li>Move pieces around the board</li>
+            <li>Land on opponent to bump them to Start</li>
+            <li>Draw a 1 or 2 to bring pieces out</li>
+            <li>Land on a slide (arrow) to slide ahead!</li>
+            <li>Get all 4 pieces Home to win!</li>
+        </ul>
+    </div>
+    
+    <div id="overlay" class="hidden">
+        <h2>🎉 Winner!</h2>
+        <p id="winner-text"></p>
+        <button class="btn" id="play-again-btn">Play Again</button>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+        const W = 360, H = 360;
+        const CTR = W / 2;
+        const OUTER_R = 160;
+        const INNER_R = 70;
+        
+        const COLORS = {
+            red: '#f44',
+            blue: '#44f',
+            slide: '#0f0',
+            home: '#ffd700'
+        };
+        
+        const SLIDES = {
+            4: 6, 13: 12, 17: 19, 25: 28, 34: 36, 39: 41
+        };
+        
+        const SLIDE_ENDS = {
+            6: 4, 12: 13, 19: 17, 28: 25, 36: 34, 41: 39
+        };
+        
+        let currentPlayer = 0;
+        let card = null;
+        let players = [];
+        let gameOver = false;
+        let selectedPiece = null;
+        let canMove = false;
+        let piecesAtStart = { 0: [], 1: [] };
+        let piecesHome = { 0: 0, 1: 0 };
+        
+        function init() {
+            currentPlayer = 0;
+            card = null;
+            gameOver = false;
+            selectedPiece = null;
+            canMove = false;
+            piecesAtStart = { 0: [0,1,2,3], 1: [0,1,2,3] };
+            piecesHome = { 0: 0, 1: 0 };
+            
+            players = [
+                { color: 'red', pos: [-1,-1,-1,-1], home: false }, // Red
+                { color: 'blue', pos: [-1,-1,-1,-1], home: false }  // Blue
+            ];
+            
+            updateTurnDisplay();
+            document.getElementById('card-display').textContent = 'Draw a card to begin';
+            document.getElementById('current-card').textContent = '?';
+            document.getElementById('message').textContent = '';
+            document.getElementById('draw-btn').disabled = false;
+            document.getElementById('overlay').classList.add('hidden');
+            
+            draw();
+        }
+        
+        function updateTurnDisplay() {
+            const display = document.getElementById('turn-display');
+            display.textContent = currentPlayer === 0 ? "Red's Turn" : "Blue's Turn";
+            display.className = currentPlayer === 0 ? 'turn-red' : 'turn-blue';
+        }
+        
+        function drawCard() {
+            if (gameOver) return;
+            
+            const values = [1,2,3,4,5,6,7,8,9,10,11,12,13,1,2];
+            card = values[Math.floor(Math.random() * values.length)];
+            
+            const cardEl = document.getElementById('current-card');
+            cardEl.textContent = card === 11 ? '11↓' : card;
+            
+            const msgEl = document.getElementById('message');
+            const names = ['one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen'];
+            let desc = `You drew a ${card}!`;
+            
+            if (card === 1 || card === 2) {
+                desc += ' Bring a piece out of Start!';
+            } else if (card === 11) {
+                desc += ' Move backward!';
+            } else if (card === 13) {
+                desc += ' Bridge!';
+            }
+            
+            msgEl.textContent = desc;
+            canMove = true;
+            document.getElementById('draw-btn').disabled = true;
+            
+            checkValidMoves();
+            draw();
+        }
+        
+        function checkValidMoves() {
+            const p = players[currentPlayer];
+            let anyMove = false;
+            
+            // Can bring out?
+            if (card === 1 || card === 2) {
+                for (let i = 0; i < 4; i++) {
+                    if (p.pos[i] === -1) {
+                        // Check if start is clear
+                        if (!isOccupied(0, 0)) {
+                            anyMove = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Can move existing pieces?
+            if (card !== 1 && card !== 2) {
+                for (let i = 0; i < 4; i++) {
+                    if (p.pos[i] >= 0) {
+                        const newPos = getNewPos(p.pos[i], card);
+                        if (newPos <= 59) { // Can't overshoot home by too much
+                            anyMove = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (!anyMove) {
+                setTimeout(() => {
+                    msgEl.textContent = 'No valid moves! Turn passes.';
+                    currentPlayer = 1 - currentPlayer;
+                    updateTurnDisplay();
+                    canMove = false;
+                    card = null;
+                    document.getElementById('draw-btn').disabled = false;
+                    document.getElementById('card-display').textContent = 'Draw a card';
+                    document.getElementById('current-card').textContent = '?';
+                }, 1000);
+            }
+        }
+        
+        function getNewPos(pos, steps) {
+            if (card === 11) return Math.max(-1, pos - steps);
+            return pos + steps;
+        }
+        
+        function getBoardPos(square) {
+            // 48 squares on outer track, starting from top
+            const angle = (square / 48) * Math.PI * 2 - Math.PI / 2;
+            return {
+                x: CTR + Math.cos(angle) * OUTER_R,
+                y: CTR + Math.sin(angle) * OUTER_R
+            };
+        }
+        
+        function getStartPos(player, idx) {
+            // Start positions for each player
+            const startSquares = [0, 12, 24, 36];
+            const startPos = getBoardPos(startSquares[player]);
+            const offset = (idx - 1.5) * 8;
+            return {
+                x: startPos.x + Math.cos(startPos.x < CTR ? 0 : Math.PI) * offset,
+                y: startPos.y + (idx - 1.5) * 8
+            };
+        }
+        
+        function isOccupied(playerIdx, square) {
+            for (let p = 0; p < 2; p++) {
+                for (let i = 0; i < 4; i++) {
+                    if (players[p].pos[i] === square && p === playerIdx) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function getPieceAt(playerIdx, square) {
+            for (let i = 0; i < 4; i++) {
+                if (players[playerIdx].pos[i] === square) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        function clickPiece(square) {
+            if (!canMove || gameOver) return;
+            
+            const p = players[currentPlayer];
+            
+            // Find which piece is at this square
+            let pieceIdx = -1;
+            for (let i = 0; i < 4; i++) {
+                if (p.pos[i] === square) {
+                    pieceIdx = i;
+                    break;
+                }
+            }
+            
+            if (pieceIdx === -1) return;
+            
+            // Check if move is valid
+            const newPos = card === 11 ? square - card : square + card;
+            
+            // Can't go backwards unless it's a backward card
+            if (card !== 11 && newPos < square && square < 48) return;
+            
+            // Check home zone logic (simplified)
+            if (newPos > 59) return; // Overshoot home
+            
+            movePiece(pieceIdx, square, newPos);
+        }
+        
+        function clickBoard(x, y) {
+            if (!canMove || gameOver) return;
+            
+            const p = players[currentPlayer];
+            
+            // Check if clicking on a piece
+            for (let i = 0; i < 4; i++) {
+                if (p.pos[i] >= 0) {
+                    const pos = getBoardPos(p.pos[i]);
+                    const dx = x - pos.x;
+                    const dy = y - pos.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < 15) {
+                        clickPiece(p.pos[i]);
+                        return;
+                    }
+                }
+            }
+            
+            // Check start area
+            for (let i = 0; i < 4; i++) {
+                if (p.pos[i] === -1) {
+                    const pos = getStartPos(currentPlayer, i);
+                    const dx = x - pos.x;
+                    const dy = y - pos.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < 15) {
+                        // Can only come out with 1 or 2
+                        if (card === 1 || card === 2) {
+                            if (!isOccupied(0, 0)) {
+                                p.pos[i] = 0;
+                                checkBump(0, i);
+                                endTurn();
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        
+        function movePiece(pieceIdx, from, to) {
+            const p = players[currentPlayer];
+            p.pos[pieceIdx] = to;
+            
+            // Check slide
+            if (card !== 11 && SLIDES[to]) {
+                p.pos[pieceIdx] = SLIDES[to];
+                document.getElementById('message').textContent = 'SLIDE! 🛷';
+            }
+            
+            // Check bump
+            checkBump(p.pos[pieceIdx], pieceIdx);
+            
+            endTurn();
+        }
+        
+        function checkBump(pos, pieceIdx) {
+            if (pos < 0) return;
+            
+            const opp = players[1 - currentPlayer];
+            for (let i = 0; i < 4; i++) {
+                if (opp.pos[i] === pos) {
+                    // Bump back to start
+                    opp.pos[i] = -1;
+                    document.getElementById('message').textContent = 'SORRY! 🏠 Bumped to Start!';
+                    break;
+                }
+            }
+        }
+        
+        function endTurn() {
+            // Check win
+            let won = true;
+            for (let i = 0; i < 4; i++) {
+                if (players[currentPlayer].pos[i] < 55) {
+                    won = false;
+                    break;
+                }
+            }
+            
+            if (won) {
+                gameOver = true;
+                const winner = currentPlayer === 0 ? 'RED' : 'BLUE';
+                document.getElementById('winner-text').textContent = winner + ' WINS!';
+                document.getElementById('overlay').classList.remove('hidden');
+                return;
+            }
+            
+            // Next turn
+            currentPlayer = 1 - currentPlayer;
+            updateTurnDisplay();
+            canMove = false;
+            card = null;
+            document.getElementById('draw-btn').disabled = false;
+            document.getElementById('card-display').textContent = 'Draw a card';
+            document.getElementById('current-card').textContent = '?';
+            draw();
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, W, H);
+            
+            // Draw outer track
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(CTR, CTR, OUTER_R, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 30;
+            ctx.beginPath();
+            ctx.arc(CTR, CTR, OUTER_R, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw slide markers
+            ctx.fillStyle = '#0f0';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            for (const [start, end] of Object.entries(SLIDES)) {
+                const pos = getBoardPos(parseInt(start));
+                ctx.fillText('→', pos.x, pos.y);
+            }
+            
+            // Draw pieces
+            players.forEach((player, pIdx) => {
+                ctx.fillStyle = COLORS[player.color];
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                
+                for (let i = 0; i < 4; i++) {
+                    let px, py;
+                    
+                    if (player.pos[i] === -1) {
+                        // At start
+                        const sp = getStartPos(pIdx, i);
+                        px = sp.x;
+                        py = sp.y;
+                    } else if (player.pos[i] < 48) {
+                        // On board
+                        const bp = getBoardPos(player.pos[i]);
+                        px = bp.x;
+                        py = bp.y;
+                    } else {
+                        // Near home
+                        px = CTR + (pIdx === 0 ? -40 : 40);
+                        py = CTR + (i - 1.5) * 15;
+                    }
+                    
+                    ctx.beginPath();
+                    ctx.arc(px, py, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Number
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillText(i + 1, px, py + 4);
+                    ctx.fillStyle = COLORS[player.color];
+                }
+            });
+            
+            // Highlight valid moves
+            if (canMove && !gameOver) {
+                const p = players[currentPlayer];
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 3;
+                
+                for (let i = 0; i < 4; i++) {
+                    if (p.pos[i] >= 0) {
+                        const pos = getBoardPos(p.pos[i]);
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+        
+        // Click handling
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            clickBoard(x, y);
+        });
+        
+        document.getElementById('draw-btn').onclick = drawCard;
+        document.getElementById('new-btn').onclick = init;
+        document.getElementById('play-again-btn').onclick = init;
+        
+        init();
+    </script>
+</body>
+</html>

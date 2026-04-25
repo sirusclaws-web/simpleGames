@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whale Adventure 🐋</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #1e90ff 50%, #000080 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        h1 {
+            color: #fff;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #game-container {
+            position: relative;
+            border: 4px solid #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        
+        canvas {
+            display: block;
+            background: transparent;
+        }
+        
+        #score {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #instructions {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        
+        #start-screen h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        #start-btn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            background: #00bfff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        #start-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #00bfff;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        
+        #game-over.show {
+            display: flex;
+        }
+        
+        #game-over h2 {
+            font-size: 2.5rem;
+            color: #ff4757;
+            margin-bottom: 0.5rem;
+        }
+        
+        #final-score {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐋 Whale Adventure</h1>
+    <div id="score">Score: 0</div>
+    <div id="game-container">
+        <canvas id="game" width="400" height="500"></canvas>
+        <div id="start-screen">
+            <h2>🐋 Dive Deep!</h2>
+            <p>Avoid obstacles & collect bubbles!</p>
+            <br>
+            <button id="start-btn">Start Game</button>
+        </div>
+        <div id="game-over">
+            <h2>Game Over!</h2>
+            <div id="final-score">Score: 0</div>
+            <button id="start-btn" onclick="startGame()">Play Again</button>
+        </div>
+    </div>
+    <div id="instructions">Hold SPACE or Click to swim up | Release to sink</div>
+    
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+        
+        let whale = { x: 80, y: 250, width: 50, height: 30, vy: 0 };
+        let obstacles = [];
+        let bubbles = [];
+        let score = 0;
+        let gameRunning = false;
+        let gameLoop;
+        let frameCount = 0;
+        let keysPressed = false;
+        
+        // Draw whale
+        function drawWhale() {
+            ctx.save();
+            ctx.translate(whale.x, whale.y);
+            
+            // Tail
+            ctx.fillStyle = '#4169e1';
+            ctx.beginPath();
+            ctx.moveTo(-25, 0);
+            ctx.lineTo(-35, -10);
+            ctx.lineTo(-35, 10);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Body
+            ctx.fillStyle = '#4169e1';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 25, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Belly
+            ctx.fillStyle = '#6495ed';
+            ctx.beginPath();
+            ctx.ellipse(5, 3, 15, 6, 0, 0, Math.PI);
+            ctx.fill();
+            
+            // Eye
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(15, -3, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(17, -3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawObstacles() {
+            obstacles.forEach(obs => {
+                // Coral/rocks
+                const gradient = ctx.createLinearGradient(obs.x, 0, obs.x + obs.width, 0);
+                gradient.addColorStop(0, '#8b4513');
+                gradient.addColorStop(0.5, '#cd853f');
+                gradient.addColorStop(1, '#8b4513');
+                ctx.fillStyle = gradient;
+                
+                ctx.beginPath();
+                ctx.moveTo(obs.x, obs.y);
+                ctx.lineTo(obs.x + 20, obs.y - obs.height);
+                ctx.lineTo(obs.x + obs.width - 10, obs.y - obs.height + 10);
+                ctx.lineTo(obs.x + obs.width, obs.y);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+        
+        function drawBubbles() {
+            bubbles.forEach(b => {
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Shine
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(b.x - b.size/3, b.y - b.size/3, b.size/3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function draw() {
+            // Clear with gradient from surface to deep sea
+            const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+            gradient.addColorStop(0, '#00bfff');
+            gradient.addColorStop(0.3, '#1e90ff');
+            gradient.addColorStop(1, '#000080');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, WIDTH, height);
+            
+            // Draw bubbles in background
+            for (let i = 0; i < 5; i++) {
+                const bx = (frameCount * 2 + i * 80) % WIDTH;
+                const by = ((frameCount + i * 50) * 0.5 + i * 100) % HEIGHT;
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.beginPath();
+                ctx.arc(bx, by, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            drawBubbles();
+            drawObstacles();
+            drawWhale();
+        }
+        
+        function update() {
+            // Whale physics
+            if (keysPressed) {
+                whale.vy -= 0.5;
+            } else {
+                whale.vy += 0.25;
+            }
+            
+            whale.vy = Math.max(-6, Math.min(6, whale.vy));
+            whale.y += whale.vy;
+            
+            // Boundaries
+            if (whale.y < 20) {
+                whale.y = 20;
+                whale.vy = 0;
+            }
+            if (whale.y > HEIGHT - 20) {
+                whale.y = HEIGHT - 20;
+                whale.vy = 0;
+            }
+            
+            // Spawn obstacles
+            if (frameCount % 90 === 0) {
+                const height = 50 + Math.random() * 100;
+                obstacles.push({
+                    x: WIDTH,
+                    y: HEIGHT,
+                    width: 40,
+                    height: height
+                });
+            }
+            
+            // Spawn bubbles (points)
+            if (frameCount % 120 === 0) {
+                bubbles.push({
+                    x: WIDTH,
+                    y: 50 + Math.random() * (HEIGHT - 100),
+                    size: 15
+                });
+            }
+            
+            // Move obstacles
+            obstacles.forEach((obs, i) => {
+                obs.x -= 3 + score * 0.001;
+                
+                // Collision
+                if (whale.x + 20 > obs.x && whale.x - 20 < obs.x + obs.width &&
+                    whale.y - 8 < obs.y && whale.y + 8 > obs.y - obs.height) {
+                    endGame();
+                }
+                
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1);
+                    score += 10;
+                    scoreEl.textContent = `Score: ${score}`;
+                }
+            });
+            
+            // Move bubbles
+            bubbles.forEach((b, i) => {
+                b.x -= 2;
+                
+                // Collect
+                const dx = whale.x - b.x;
+                const dy = whale.y - b.y;
+                if (Math.sqrt(dx*dx + dy*dy) < b.size + 20) {
+                    bubbles.splice(i, 1);
+                    score += 50;
+                    scoreEl.textContent = `Score: ${score}`;
+                }
+                
+                if (b.x + b.size < 0) {
+                    bubbles.splice(i, 1);
+                }
+            });
+            
+            frameCount++;
+        }
+        
+        function gameLoopFn() {
+            if (!gameRunning) return;
+            update();
+            draw();
+            gameLoop = requestAnimationFrame(gameLoopFn);
+        }
+        
+        function startGame() {
+            whale = { x: 80, y: 250, width: 50, height: 30, vy: 0 };
+            obstacles = [];
+            bubbles = [];
+            score = 0;
+            frameCount = 0;
+            scoreEl.textContent = 'Score: 0';
+            gameRunning = true;
+            startScreen.style.display = 'none';
+            gameOverScreen.classList.remove('show');
+            gameLoopFn();
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            cancelAnimationFrame(gameLoop);
+            finalScoreEl.textContent = `Score: ${score}`;
+            gameOverScreen.classList.add('show');
+        }
+        
+        // Controls
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                keysPressed = true;
+                if (!gameRunning) startGame();
+            }
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'Space') {
+                keysPressed = false;
+            }
+        });
+        
+        document.addEventListener('mousedown', () => {
+            keysPressed = true;
+        });
+        
+        document.addEventListener('mouseup', () => {
+            keysPressed = false;
+        });
+        
+        // Touch support
+        document.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keysPressed = true;
+            if (!gameRunning) startGame();
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keysPressed = false;
+        });
+        
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>

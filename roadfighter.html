@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Road Fighter 🏎️</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #111;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        h1 { color: #f00; font-size: 24px; margin: 10px 0; text-shadow: 0 0 10px #f00; }
+        
+        #stats {
+            display: flex;
+            gap: 20px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        #stats span { color: #f00; font-weight: bold; }
+        
+        #game-container {
+            position: relative;
+            border: 4px solid #f00;
+            border-radius: 4px;
+        }
+        
+        canvas { display: block; background: #333; }
+        
+        #touch-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 70px);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .tc-btn {
+            background: rgba(255,0,0,0.3);
+            border: 2px solid #f00;
+            border-radius: 10px;
+            color: #f00;
+            font-size: 24px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tc-btn:active { background: rgba(255,0,0,0.6); }
+        
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #overlay.hidden { display: none; }
+        #overlay h2 { color: #f00; font-size: 36px; margin-bottom: 10px; }
+        #overlay p { color: #888; margin-bottom: 20px; }
+        
+        .btn {
+            padding: 15px 30px;
+            background: #f00;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏎️ Road Fighter</h1>
+    
+    <div id="stats">
+        <div>Score: <span id="score">0</span></div>
+        <div>Speed: <span id="speed">60</span></div>
+        <div>Fuel: <span id="fuel">100</span>%</div>
+    </div>
+    
+    <div id="game-container">
+        <canvas id="game" width="300" height="500"></canvas>
+    </div>
+    
+    <div id="touch-controls">
+        <div></div>
+        <div class="tc-btn" id="btnUp">▲</div>
+        <div></div>
+        <div class="tc-btn" id="btnLeft">◄</div>
+        <div class="tc-btn" id="btnDown">▼</div>
+        <div class="tc-btn" id="btnRight">►</div>
+    </div>
+    
+    <div id="overlay">
+        <h2>🏎️ Road Fighter</h2>
+        <p>Dodge traffic, collect fuel!</p>
+        <button class="btn" id="start-btn">Start</button>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        const W = canvas.width;
+        const H = canvas.height;
+        const ROAD_W = 200;
+        const LANES = 3;
+        
+        let player = { x: W/2, y: H - 80, w: 30, h: 50 };
+        let roadOffset = 0;
+        let enemies = [];
+        let fuels = [];
+        let score = 0;
+        let fuel = 100;
+        let speed = 60;
+        let gameRunning = false;
+        let frame = 0;
+        
+        function init() {
+            player = { x: W/2, y: H - 80, w: 30, h: 50 };
+            enemies = [];
+            fuels = [];
+            score = 0;
+            fuel = 100;
+            speed = 60;
+            frame = 0;
+            gameRunning = true;
+            document.getElementById('overlay').classList.add('hidden');
+            document.getElementById('score').textContent = '0';
+            document.getElementById('speed').textContent = '60';
+            document.getElementById('fuel').textContent = '100';
+            loop();
+        }
+        
+        function loop() {
+            if (!gameRunning) return;
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        
+        function update() {
+            frame++;
+            
+            // Road animation
+            roadOffset = (roadOffset + speed * 0.1) % 50;
+            
+            // Fuel consumption
+            fuel -= 0.02 + (speed - 60) * 0.001;
+            if (fuel <= 0) {
+                fuel = 0;
+                gameOver();
+                return;
+            }
+            document.getElementById('fuel').textContent = Math.floor(fuel);
+            
+            // Score
+            score += Math.floor(speed * 0.01);
+            document.getElementById('score').textContent = score;
+            
+            // Spawn enemies
+            if (frame % Math.max(20, 60 - speed) === 0) {
+                const lane = Math.floor(Math.random() * LANES);
+                const laneW = ROAD_W / LANES;
+                const roadLeft = (W - ROAD_W) / 2;
+                enemies.push({
+                    x: roadLeft + lane * laneW + laneW/2,
+                    y: -60,
+                    w: 28,
+                    h: 45,
+                    type: Math.random() > 0.7 ? 'truck' : 'car',
+                    color: ['#ff0','#0ff','#f0f','#f80','#ff0'][Math.floor(Math.random()*5)]
+                });
+            }
+            
+            // Spawn fuel
+            if (frame % 200 === 0) {
+                const lane = Math.floor(Math.random() * LANES);
+                const laneW = ROAD_W / LANES;
+                const roadLeft = (W - ROAD_W) / 2;
+                fuels.push({
+                    x: roadLeft + lane * laneW + laneW/2,
+                    y: -30,
+                    size: 20
+                });
+            }
+            
+            // Move enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                e.y += speed * 0.15;
+                
+                // Collision
+                if (collide(player, e)) {
+                    gameOver();
+                    return;
+                }
+                
+                if (e.y > H + 60) {
+                    enemies.splice(i, 1);
+                }
+            }
+            
+            // Move fuel
+            for (let i = fuels.length - 1; i >= 0; i--) {
+                const f = fuels[i];
+                f.y += speed * 0.15;
+                
+                // Collect
+                const dx = player.x - f.x;
+                const dy = player.y - f.y;
+                if (Math.sqrt(dx*dx + dy*dy) < 30) {
+                    fuels.splice(i, 1);
+                    fuel = Math.min(100, fuel + 25);
+                    continue;
+                }
+                
+                if (f.y > H + 30) {
+                    fuels.splice(i, 1);
+                }
+            }
+            
+            // Speed increase over time
+            if (frame % 500 === 0 && speed < 150) {
+                speed += 5;
+                document.getElementById('speed').textContent = speed;
+            }
+        }
+        
+        function collide(a, b) {
+            return a.x - a.w/2 < b.x + b.w/2 &&
+                   a.x + a.w/2 > b.x - b.w/2 &&
+                   a.y - a.h/2 < b.y + b.h/2 &&
+                   a.y + a.h/2 > b.y - b.h/2;
+        }
+        
+        function draw() {
+            // Sky
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, W, H);
+            
+            // Grass
+            ctx.fillStyle = '#2d5a2d';
+            ctx.fillRect(0, 0, (W - ROAD_W) / 2, H);
+            ctx.fillRect((W + ROAD_W) / 2, 0, (W - ROAD_W) / 2, H);
+            
+            // Road
+            ctx.fillStyle = '#333';
+            ctx.fillRect((W - ROAD_W) / 2, 0, ROAD_W, H);
+            
+            // Road edges
+            ctx.fillStyle = '#f00';
+            ctx.fillRect((W - ROAD_W) / 2, 0, 4, H);
+            ctx.fillRect((W + ROAD_W) / 2 - 4, 0, 4, H);
+            
+            // Lane markers
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([30, 20]);
+            ctx.lineWidth = 3;
+            const roadLeft = (W - ROAD_W) / 2;
+            for (let i = 1; i < LANES; i++) {
+                const lx = roadLeft + (ROAD_W / LANES) * i;
+                ctx.beginPath();
+                ctx.moveTo(lx, -50 + roadOffset);
+                ctx.lineTo(lx, H);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+            
+            // Fuel pickups
+            fuels.forEach(f => {
+                ctx.fillStyle = '#0f0';
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('F', f.x, f.y + 5);
+            });
+            
+            // Enemies
+            enemies.forEach(e => {
+                // Car body
+                ctx.fillStyle = e.color;
+                ctx.fillRect(e.x - e.w/2, e.y - e.h/2, e.w, e.h);
+                
+                // Windshield
+                ctx.fillStyle = '#222';
+                ctx.fillRect(e.x - e.w/2 + 4, e.y - e.h/2 + 5, e.w - 8, 12);
+                
+                // Rear window
+                ctx.fillRect(e.x - e.w/2 + 4, e.y + e.h/2 - 12, e.w - 8, 8);
+                
+                // Taillights
+                ctx.fillStyle = '#f00';
+                ctx.fillRect(e.x - e.w/2, e.y + e.h/2 - 6, 6, 4);
+                ctx.fillRect(e.x + e.w/2 - 6, e.y + e.h/2 - 6, 6, 4);
+            });
+            
+            // Player car
+            drawCar(player.x, player.y, '#00f');
+        }
+        
+        function drawCar(x, y, col) {
+            // Body
+            ctx.fillStyle = col;
+            ctx.fillRect(x - 15, y - 25, 30, 50);
+            
+            // Windshield
+            ctx.fillStyle = '#222';
+            ctx.fillRect(x - 12, y - 18, 24, 10);
+            
+            // Rear window
+            ctx.fillRect(x - 12, y + 10, 24, 8);
+            
+            // Hood detail
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(x - 3, y - 25, 6, 8);
+            
+            // Headlights
+            ctx.fillStyle = '#ff0';
+            ctx.fillRect(x - 12, y - 25, 6, 4);
+            ctx.fillRect(x + 6, y - 25, 6, 4);
+            
+            // Wheels
+            ctx.fillStyle = '#111';
+            ctx.fillRect(x - 17, y - 15, 4, 15);
+            ctx.fillRect(x + 13, y - 15, 4, 15);
+            ctx.fillRect(x - 17, y + 5, 4, 15);
+            ctx.fillRect(x + 13, y + 5, 4, 15);
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('overlay').classList.remove('hidden');
+            document.querySelector('#overlay h2').textContent = '💥 CRASH!';
+            document.querySelector('#overlay p').textContent = 'Score: ' + score;
+            document.getElementById('start-btn').textContent = 'Try Again';
+        }
+        
+        // Controls
+        let keys = { left: false, right: false, up: false, down: false };
+        
+        document.addEventListener('keydown', e => {
+            if (!gameRunning) return;
+            const roadLeft = (W - ROAD_W) / 2 + 20;
+            const roadRight = (W + ROAD_W) / 2 - 20;
+            
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                player.x = Math.max(roadLeft, player.x - 8);
+            }
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                player.x = Math.min(roadRight, player.x + 8);
+            }
+            if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+                speed = Math.min(150, speed + 2);
+                document.getElementById('speed').textContent = speed;
+            }
+            if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+                speed = Math.max(30, speed - 2);
+                document.getElementById('speed').textContent = speed;
+            }
+        });
+        
+        // Touch controls
+        function btn(id, dir) {
+            const el = document.getElementById(id);
+            const roadLeft = (W - ROAD_W) / 2 + 20;
+            const roadRight = (W + ROAD_W) / 2 - 20;
+            
+            el.addEventListener('touchstart', e => { e.preventDefault(); 
+                if (dir === 'left') player.x = Math.max(roadLeft, player.x - 8);
+                if (dir === 'right') player.x = Math.min(roadRight, player.x + 8);
+                if (dir === 'up') { speed = Math.min(150, speed + 2); document.getElementById('speed').textContent = speed; }
+                if (dir === 'down') { speed = Math.max(30, speed - 2); document.getElementById('speed').textContent = speed; }
+            });
+            el.addEventListener('mousedown', e => {
+                if (dir === 'left') player.x = Math.max(roadLeft, player.x - 8);
+                if (dir === 'right') player.x = Math.min(roadRight, player.x + 8);
+                if (dir === 'up') { speed = Math.min(150, speed + 2); document.getElementById('speed').textContent = speed; }
+                if (dir === 'down') { speed = Math.max(30, speed - 2); document.getElementById('speed').textContent = speed; }
+            });
+        }
+        
+        btn('btnLeft', 'left');
+        btn('btnRight', 'right');
+        btn('btnUp', 'up');
+        btn('btnDown', 'down');
+        
+        document.getElementById('start-btn').onclick = init;
+        
+        draw();
+    </script>
+</body>
+</html>

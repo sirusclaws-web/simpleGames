@@ -12,7 +12,7 @@
         }
         
         body {
-            background: linear-gradient(to bottom, #87CEEB 0%, #1e90ff 50%, #000080 100%);
+            background: linear-gradient(to bottom, #001133, #003366, #000033);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -32,10 +32,10 @@
         
         #game-container {
             position: relative;
-            border: 4px solid #fff;
+            border: 4px solid #00bfff;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            box-shadow: 0 0 30px rgba(0,191,255,0.3);
         }
         
         canvas {
@@ -44,7 +44,7 @@
         }
         
         #score {
-            color: #fff;
+            color: #00bfff;
             font-size: 1.5rem;
             font-weight: bold;
             margin: 0.5rem 0;
@@ -57,13 +57,13 @@
             margin-top: 0.5rem;
         }
         
-        #start-screen {
+        #start-screen, #game-over {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -71,12 +71,25 @@
             color: #fff;
         }
         
-        #start-screen h2 {
+        #game-over {
+            display: none;
+        }
+        
+        #game-over.show {
+            display: flex;
+        }
+        
+        #start-screen h2, #game-over h2 {
             font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #00bfff;
+        }
+        
+        #start-screen p {
             margin-bottom: 1rem;
         }
         
-        #start-btn {
+        .btn {
             padding: 1rem 2rem;
             font-size: 1.2rem;
             background: #00bfff;
@@ -88,38 +101,15 @@
             transition: all 0.2s;
         }
         
-        #start-btn:hover {
+        .btn:hover {
             transform: scale(1.1);
             box-shadow: 0 0 20px #00bfff;
-        }
-        
-        #game-over {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-        }
-        
-        #game-over.show {
-            display: flex;
-        }
-        
-        #game-over h2 {
-            font-size: 2.5rem;
-            color: #ff4757;
-            margin-bottom: 0.5rem;
         }
         
         #final-score {
             font-size: 1.5rem;
             margin-bottom: 1.5rem;
+            color: #ff6b6b;
         }
     </style>
 </head>
@@ -131,13 +121,12 @@
         <div id="start-screen">
             <h2>🐋 Dive Deep!</h2>
             <p>Avoid obstacles & collect bubbles!</p>
-            <br>
-            <button id="start-btn">Start Game</button>
+            <button class="btn" id="start-btn">Start Game</button>
         </div>
         <div id="game-over">
-            <h2>Game Over!</h2>
+            <h2>💥 Game Over!</h2>
             <div id="final-score">Score: 0</div>
-            <button id="start-btn" onclick="startGame()">Play Again</button>
+            <button class="btn" onclick="startGame()">Play Again</button>
         </div>
     </div>
     <div id="instructions">Hold SPACE or Click to swim up | Release to sink</div>
@@ -153,7 +142,7 @@
         const WIDTH = canvas.width;
         const HEIGHT = canvas.height;
         
-        let whale = { x: 80, y: 250, width: 50, height: 30, vy: 0 };
+        let whale = { x: 80, y: 250, vy: 0 };
         let obstacles = [];
         let bubbles = [];
         let score = 0;
@@ -162,40 +151,71 @@
         let frameCount = 0;
         let keysPressed = false;
         
-        // Draw whale
         function drawWhale() {
+            const x = whale.x;
+            const y = whale.y;
+            
             ctx.save();
-            ctx.translate(whale.x, whale.y);
+            ctx.translate(x, y);
+            
+            // Angle based on velocity
+            const angle = Math.min(Math.max(whale.vy * 0.1, -0.4), 0.4);
+            ctx.rotate(angle);
             
             // Tail
-            ctx.fillStyle = '#4169e1';
+            ctx.fillStyle = '#5588ff';
             ctx.beginPath();
-            ctx.moveTo(-25, 0);
-            ctx.lineTo(-35, -10);
-            ctx.lineTo(-35, 10);
+            ctx.moveTo(-30, 0);
+            ctx.lineTo(-45, -15);
+            ctx.lineTo(-45, 15);
             ctx.closePath();
             ctx.fill();
             
             // Body
-            ctx.fillStyle = '#4169e1';
+            ctx.fillStyle = '#5588ff';
             ctx.beginPath();
-            ctx.ellipse(0, 0, 25, 12, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, 30, 15, 0, 0, Math.PI * 2);
             ctx.fill();
             
-            // Belly
-            ctx.fillStyle = '#6495ed';
+            // Underbelly
+            ctx.fillStyle = '#88aaff';
             ctx.beginPath();
-            ctx.ellipse(5, 3, 15, 6, 0, 0, Math.PI);
+            ctx.ellipse(5, 5, 18, 8, 0, 0, Math.PI);
             ctx.fill();
             
-            // Eye
-            ctx.fillStyle = '#fff';
+            // Eye (white)
+            ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(15, -3, 5, 0, Math.PI * 2);
+            ctx.arc(18, -4, 6, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#000';
+            
+            // Pupil (black)
+            ctx.fillStyle = '#000000';
             ctx.beginPath();
-            ctx.arc(17, -3, 2, 0, Math.PI * 2);
+            ctx.arc(20, -4, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Smile
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(22, 2, 6, 0.2, 1.2);
+            ctx.stroke();
+            
+            // Fins
+            ctx.fillStyle = '#5588ff';
+            ctx.beginPath();
+            ctx.moveTo(-5, 8);
+            ctx.lineTo(-15, 20);
+            ctx.lineTo(5, 12);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(-5, -8);
+            ctx.lineTo(-15, -20);
+            ctx.lineTo(5, -12);
+            ctx.closePath();
             ctx.fill();
             
             ctx.restore();
@@ -203,18 +223,18 @@
         
         function drawObstacles() {
             obstacles.forEach(obs => {
-                // Coral/rocks
-                const gradient = ctx.createLinearGradient(obs.x, 0, obs.x + obs.width, 0);
-                gradient.addColorStop(0, '#8b4513');
-                gradient.addColorStop(0.5, '#cd853f');
-                gradient.addColorStop(1, '#8b4513');
+                // Rock gradient
+                const gradient = ctx.createLinearGradient(obs.x, obs.y, obs.x + obs.width, obs.y);
+                gradient.addColorStop(0, '#8B4513');
+                gradient.addColorStop(0.5, '#CD853F');
+                gradient.addColorStop(1, '#8B4513');
                 ctx.fillStyle = gradient;
                 
                 ctx.beginPath();
-                ctx.moveTo(obs.x, obs.y);
-                ctx.lineTo(obs.x + 20, obs.y - obs.height);
-                ctx.lineTo(obs.x + obs.width - 10, obs.y - obs.height + 10);
-                ctx.lineTo(obs.x + obs.width, obs.y);
+                ctx.moveTo(obs.x, HEIGHT);
+                ctx.lineTo(obs.x + 15, obs.y);
+                ctx.lineTo(obs.x + 30, obs.y + 20);
+                ctx.lineTo(obs.x + obs.width, HEIGHT);
                 ctx.closePath();
                 ctx.fill();
             });
@@ -222,39 +242,56 @@
         
         function drawBubbles() {
             bubbles.forEach(b => {
-                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.strokeStyle = 'rgba(255,255,255,0.7)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
                 ctx.stroke();
                 
-                // Shine
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                // Shine spot
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
                 ctx.beginPath();
-                ctx.arc(b.x - b.size/3, b.y - b.size/3, b.size/3, 0, Math.PI * 2);
+                ctx.arc(b.x - b.size/3, b.y - b.size/3, b.size/4, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
         
-        function draw() {
-            // Clear with gradient from surface to deep sea
+        function drawBackground() {
+            // Deep sea gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-            gradient.addColorStop(0, '#00bfff');
-            gradient.addColorStop(0.3, '#1e90ff');
-            gradient.addColorStop(1, '#000080');
+            gradient.addColorStop(0, '#003366');
+            gradient.addColorStop(0.5, '#001133');
+            gradient.addColorStop(1, '#000011');
             ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, WIDTH, height);
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
             
-            // Draw bubbles in background
+            // Light rays from surface
+            ctx.fillStyle = 'rgba(0,191,255,0.05)';
             for (let i = 0; i < 5; i++) {
-                const bx = (frameCount * 2 + i * 80) % WIDTH;
-                const by = ((frameCount + i * 50) * 0.5 + i * 100) % HEIGHT;
-                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                const x = (i * 100 + frameCount * 0.5) % (WIDTH + 100) - 50;
                 ctx.beginPath();
-                ctx.arc(bx, by, 3, 0, Math.PI * 2);
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x + 30, 0);
+                ctx.lineTo(x - 20, HEIGHT);
+                ctx.lineTo(x - 50, HEIGHT);
+                ctx.closePath();
                 ctx.fill();
             }
             
+            // Floating particles
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            for (let i = 0; i < 20; i++) {
+                const px = (i * 73 + frameCount * 0.3) % WIDTH;
+                const py = (i * 97 + frameCount * 0.5) % HEIGHT;
+                ctx.beginPath();
+                ctx.arc(px, py, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            drawBackground();
             drawBubbles();
             drawObstacles();
             drawWhale();
@@ -263,78 +300,84 @@
         function update() {
             // Whale physics
             if (keysPressed) {
-                whale.vy -= 0.5;
+                whale.vy -= 0.6;
             } else {
-                whale.vy += 0.25;
+                whale.vy += 0.3;
             }
             
-            whale.vy = Math.max(-6, Math.min(6, whale.vy));
+            whale.vy = Math.max(-8, Math.min(8, whale.vy));
             whale.y += whale.vy;
             
-            // Boundaries
-            if (whale.y < 20) {
-                whale.y = 20;
+            // Top/bottom bounds (sea floor and surface)
+            if (whale.y < 30) {
+                whale.y = 30;
                 whale.vy = 0;
             }
-            if (whale.y > HEIGHT - 20) {
-                whale.y = HEIGHT - 20;
+            if (whale.y > HEIGHT - 30) {
+                whale.y = HEIGHT - 30;
                 whale.vy = 0;
             }
             
-            // Spawn obstacles
-            if (frameCount % 90 === 0) {
-                const height = 50 + Math.random() * 100;
+            // Spawn coral obstacles
+            if (frameCount % 80 === 0) {
+                const height = 60 + Math.random() * 120;
                 obstacles.push({
-                    x: WIDTH,
-                    y: HEIGHT,
-                    width: 40,
+                    x: WIDTH + 20,
+                    y: HEIGHT - height,
+                    width: 50 + Math.random() * 30,
                     height: height
                 });
             }
             
-            // Spawn bubbles (points)
-            if (frameCount % 120 === 0) {
+            // Spawn bubbles
+            if (frameCount % 100 === 0) {
                 bubbles.push({
-                    x: WIDTH,
-                    y: 50 + Math.random() * (HEIGHT - 100),
-                    size: 15
+                    x: WIDTH + 20,
+                    y: 50 + Math.random() * (HEIGHT - 150),
+                    size: 12 + Math.random() * 10
                 });
             }
             
             // Move obstacles
-            obstacles.forEach((obs, i) => {
-                obs.x -= 3 + score * 0.001;
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.x -= 3 + score * 0.0005;
                 
-                // Collision
-                if (whale.x + 20 > obs.x && whale.x - 20 < obs.x + obs.width &&
-                    whale.y - 8 < obs.y && whale.y + 8 > obs.y - obs.height) {
+                // Collision with whale
+                const whX = whale.x;
+                const whY = whale.y;
+                if (whX + 20 > obs.x && whX - 20 < obs.x + obs.width &&
+                    whY - 10 < obs.y && whY + 10 > obs.y - obs.height) {
                     endGame();
+                    return;
                 }
                 
                 if (obs.x + obs.width < 0) {
                     obstacles.splice(i, 1);
                     score += 10;
-                    scoreEl.textContent = `Score: ${score}`;
+                    scoreEl.textContent = 'Score: ' + score;
                 }
-            });
+            }
             
-            // Move bubbles
-            bubbles.forEach((b, i) => {
+            // Move and collect bubbles
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const b = bubbles[i];
                 b.x -= 2;
                 
-                // Collect
+                // Check collection
                 const dx = whale.x - b.x;
                 const dy = whale.y - b.y;
-                if (Math.sqrt(dx*dx + dy*dy) < b.size + 20) {
+                if (Math.sqrt(dx*dx + dy*dy) < b.size + 25) {
                     bubbles.splice(i, 1);
                     score += 50;
-                    scoreEl.textContent = `Score: ${score}`;
+                    scoreEl.textContent = 'Score: ' + score;
+                    continue;
                 }
                 
                 if (b.x + b.size < 0) {
                     bubbles.splice(i, 1);
                 }
-            });
+            }
             
             frameCount++;
         }
@@ -343,11 +386,13 @@
             if (!gameRunning) return;
             update();
             draw();
-            gameLoop = requestAnimationFrame(gameLoopFn);
+            if (gameRunning) {
+                gameLoop = requestAnimationFrame(gameLoopFn);
+            }
         }
         
         function startGame() {
-            whale = { x: 80, y: 250, width: 50, height: 30, vy: 0 };
+            whale = { x: 80, y: 250, vy: 0 };
             obstacles = [];
             bubbles = [];
             score = 0;
@@ -362,12 +407,12 @@
         function endGame() {
             gameRunning = false;
             cancelAnimationFrame(gameLoop);
-            finalScoreEl.textContent = `Score: ${score}`;
+            finalScoreEl.textContent = 'Score: ' + score;
             gameOverScreen.classList.add('show');
         }
         
-        // Controls
-        document.addEventListener('keydown', e => {
+        // Controls - Keyboard
+        document.addEventListener('keydown', function(e) {
             if (e.code === 'Space') {
                 e.preventDefault();
                 keysPressed = true;
@@ -375,36 +420,39 @@
             }
         });
         
-        document.addEventListener('keyup', e => {
+        document.addEventListener('keyup', function(e) {
             if (e.code === 'Space') {
                 keysPressed = false;
             }
         });
         
-        document.addEventListener('mousedown', () => {
+        // Controls - Mouse
+        document.addEventListener('mousedown', function() {
             keysPressed = true;
         });
         
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mouseup', function() {
             keysPressed = false;
         });
         
-        // Touch support
-        document.addEventListener('touchstart', (e) => {
+        // Controls - Touch
+        document.addEventListener('touchstart', function(e) {
             e.preventDefault();
             keysPressed = true;
             if (!gameRunning) startGame();
         });
         
-        document.addEventListener('touchend', (e) => {
+        document.addEventListener('touchend', function(e) {
             e.preventDefault();
             keysPressed = false;
         });
         
         document.getElementById('start-btn').addEventListener('click', startGame);
         
-        // Initial draw
-        draw();
+        // Wait for page to load fully
+        window.onload = function() {
+            draw();
+        };
     </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Tetris 🧱</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,13 +16,16 @@
             justify-content: center;
             font-family: monospace;
             color: #fff;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
         }
         
         h1 { color: #0ff; margin-bottom: 10px; }
         
         #game-wrapper {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             align-items: flex-start;
         }
         
@@ -34,21 +37,19 @@
         canvas { display: block; background: #000; }
         
         #sidebar {
-            display: flex;
+            display: none;
             flex-direction: column;
-            gap: 15px;
-            min-width: 100px;
+            gap: 10px;
+            min-width: 80px;
         }
         
-        .info { color: #888; font-size: 12px; }
-        .info .val { color: #0ff; font-size: 24px; font-weight: bold; }
+        .info { color: #888; font-size: 11px; }
+        .info .val { color: #0ff; font-size: 20px; font-weight: bold; }
         
         #next { background: #000; border: 1px solid #333; }
         
-        #controls { color: #555; font-size: 11px; margin-top: 10px; }
-        
         .btn {
-            padding: 12px 24px;
+            padding: 12px 20px;
             background: #0ff;
             color: #000;
             border: none;
@@ -59,10 +60,34 @@
         }
         .btn:hover { box-shadow: 0 0 15px #0ff; }
         
+        #touch-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            width: 300px;
+        }
+        
+        .tc-btn {
+            padding: 20px;
+            background: rgba(0,255,255,0.2);
+            border: 2px solid #0ff;
+            border-radius: 8px;
+            color: #0ff;
+            font-size: 24px;
+            text-align: center;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .tc-btn:active {
+            background: rgba(0,255,255,0.5);
+        }
+        
         #overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -70,8 +95,16 @@
             z-index: 100;
         }
         #overlay.hidden { display: none; }
-        #overlay h2 { color: #f0f; font-size: 32px; margin-bottom: 20px; }
-        #overlay p { color: #888; margin-bottom: 20px; }
+        #overlay h2 { color: #f0f; font-size: 36px; margin-bottom: 15px; }
+        #overlay p { color: #888; margin-bottom: 20px; font-size: 14px; }
+        
+        @media (max-width: 500px) {
+            #game-wrapper { flex-direction: column; align-items: center; }
+            #sidebar { display: flex; flex-direction: row; flex-wrap: wrap; }
+            .info { text-align: center; }
+            #touch-controls { width: 240px; }
+            .tc-btn { padding: 25px; font-size: 20px; }
+        }
     </style>
 </head>
 <body>
@@ -83,17 +116,26 @@
         </div>
         
         <div id="sidebar">
-            <div class="info">SCORE <div class="val" id="score">0</div></div>
-            <div class="info">LEVEL <div class="val" id="level">1</div></div>
-            <div class="info">NEXT <canvas id="next" width="80" height="60"></canvas></div>
-            <div id="controls">← → Move<br>↑ Rotate<br>↓ Drop<br>Space = Hard</div>
-            <button class="btn" id="startBtn">Start</button>
+            <div class="info">SCORE<div class="val" id="score">0</div></div>
+            <div class="info">LEVEL<div class="val" id="level">1</div></div>
+            <canvas id="next" width="60" height="50"></canvas>
         </div>
     </div>
     
+    <div id="touch-controls">
+        <div></div>
+        <div class="tc-btn" id="btnRotate">↻</div>
+        <div></div>
+        <div class="tc-btn" id="btnLeft">←</div>
+        <div class="tc-btn" id="btnDown">↓</div>
+        <div class="tc-btn" id="btnRight">→</div>
+    </div>
+    
+    <div class="btn" id="startBtn" style="margin-top:15px">Start Game</div>
+    
     <div id="overlay">
         <h2>🧱 Tetris</h2>
-        <p>Stack blocks. Clear lines. Don't fill up!</p>
+        <p>Stack blocks. Clear lines.</p>
         <button class="btn" id="playBtn">Play</button>
     </div>
     
@@ -121,9 +163,7 @@
         
         function init() {
             board = [];
-            for (let r = 0; r < ROWS; r++) {
-                board[r] = Array(COLS).fill(0);
-            }
+            for (let r = 0; r < ROWS; r++) board[r] = Array(COLS).fill(0);
         }
         
         function rand() { return {...PIECES[Math.floor(Math.random() * PIECES.length)]}; }
@@ -134,10 +174,7 @@
             x = Math.floor(COLS/2) - Math.floor(piece.s[0].length/2);
             y = 0;
             drawNext();
-            
-            if (collide(0, 0, piece.s)) {
-                gameOver();
-            }
+            if (collide(0, 0, piece.s)) gameOver();
         }
         
         function collide(dx, dy, shape) {
@@ -200,17 +237,12 @@
         function draw() {
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, 240, 400);
-            
             for (let r = 0; r < ROWS; r++)
                 for (let c = 0; c < COLS; c++)
                     if (board[r][c]) drawBlock(c, r, board[r][c]);
-            
-            if (piece)
-                piece.s.forEach((row, ry) =>
-                    row.forEach((v, cx) => {
-                        if (v) drawBlock(x+cx, y+ry, piece.c);
-                    })
-                );
+            if (piece) piece.s.forEach((row, ry) =>
+                row.forEach((v, cx) => { if (v) drawBlock(x+cx, y+ry, piece.c); })
+            );
         }
         
         function drawBlock(cx, cy, col) {
@@ -223,15 +255,15 @@
         
         function drawNext() {
             nextCtx.fillStyle = '#000';
-            nextCtx.fillRect(0, 0, 80, 60);
+            nextCtx.fillRect(0, 0, 60, 50);
             if (nextP) {
-                let ox = (4 - nextP.s[0].length) / 2;
-                let oy = (3 - nextP.s.length) / 2;
+                let ox = (3 - nextP.s[0].length) / 2;
+                let oy = (2 - nextP.s.length) / 2;
                 nextP.s.forEach((row, ry) =>
                     row.forEach((v, cx) => {
                         if (v) {
                             nextCtx.fillStyle = nextP.c;
-                            nextCtx.fillRect((ox+cx)*15+1, (oy+ry)*15+1, 13, 13);
+                            nextCtx.fillRect((ox+cx)*12+1, (oy+ry)*12+1, 10, 10);
                         }
                     })
                 );
@@ -264,9 +296,11 @@
             running = true;
             document.getElementById('overlay').classList.add('hidden');
             lastDrop = performance.now();
+            draw();
             loop(lastDrop);
         }
         
+        // Keyboard
         document.addEventListener('keydown', e => {
             if (!running) return;
             if (e.code === 'ArrowLeft') move(-1, 0);
@@ -276,6 +310,22 @@
             else if (e.code === 'Space') { while(move(0, 1)); lock(); }
             draw();
         });
+        
+        // Touch controls
+        const btnLeft = document.getElementById('btnLeft');
+        const btnRight = document.getElementById('btnRight');
+        const btnDown = document.getElementById('btnDown');
+        const btnRotate = document.getElementById('btnRotate');
+        
+        function addTouch(el, fn) {
+            el.addEventListener('touchstart', e => { e.preventDefault(); fn(); });
+            el.addEventListener('mousedown', e => { e.preventDefault(); fn(); });
+        }
+        
+        addTouch(btnLeft, () => { if(running) { move(-1, 0); draw(); }});
+        addTouch(btnRight, () => { if(running) { move(1, 0); draw(); }});
+        addTouch(btnDown, () => { if(running) { move(0, 1); draw(); }});
+        addTouch(btnRotate, () => { if(running) { rotate(); draw(); }});
         
         document.getElementById('startBtn').onclick = start;
         document.getElementById('playBtn').onclick = start;
